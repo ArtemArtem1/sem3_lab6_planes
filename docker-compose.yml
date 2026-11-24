@@ -1,0 +1,62 @@
+services:
+  storage:
+    image: lab6-storage:1.0
+    build:
+      context: ./storage_service
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE}
+
+    environment:
+      APP_HOST: ${APP_HOST}
+      APP_PORT: ${STORAGE_PORT}
+      APP_DB_PATH: ${STORAGE_DB_PATH}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL}
+
+    volumes:
+      - planes_data:/data
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['APP_PORT'] + '/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  gateway:
+    image: lab6-gateway:1.0
+    build:
+      context: ./api_gateway
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE}
+
+    environment:
+      APP_HOST: ${APP_HOST}
+      APP_PORT: ${GATEWAY_PORT}
+      APP_STORAGE_URL: http://storage:${STORAGE_PORT}
+      APP_REQUEST_TIMEOUT_S: ${REQUEST_TIMEOUT_S}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL}
+
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT}:${GATEWAY_PORT}"
+
+    depends_on:
+      storage:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ['APP_PORT'] + '/health', timeout=4)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  planes_data:

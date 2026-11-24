@@ -1,0 +1,2 @@
+class StorageUnavailableError(RuntimeError):
+    pass

@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - storage_service
+          - api_gateway
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create virtual environment
+        run: python3 -m venv .venv
+
+      - name: Install dependencies
+        run: |
+          .venv/bin/python -m pip install -r requirements-dev.txt
+
+      - name: Ruff check
+        run: .venv/bin/ruff check .
+
+      - name: Mypy check
+        run: .venv/bin/mypy .
+
+      - name: Run tests
+        run: .venv/bin/python -m pytest -v
+
+      - name: Build Docker image
+        run: docker build -t lab6-${{ matrix.service }}:ci .
